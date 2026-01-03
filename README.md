@@ -110,5 +110,6 @@ Interests: Machine Learning, Data Science, Web Deployment
 
 ## CONTACT :
 Email : harsh.psingh2005@gmail.com
+
 Linkedin : https://www.linkedin.com/in/harshpratapsingh333/
 
