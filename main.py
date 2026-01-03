@@ -12,7 +12,7 @@ TODAY = date.today().strftime("%Y-%m-%d")
 
 st.title("Stock Forecasting App")
 
-stocks = ("GOLDBEES.BO","AAPL","GOOG")
+stocks = ("RPOWER.NS","NFLX","GOLDBEES.BO","AAPL","GOOG")
 selected_stocks = st.selectbox("Select dataset for prediction",stocks)
 
 n_years = st.slider("Years of prediction:",1 , 4)
@@ -47,3 +47,24 @@ def plot_raw_data():
 plot_raw_data()
 
 # FORECASTING 
+df_train = data[['Date','Close']]
+df_train = df_train.rename(columns={"Date":"ds","Close":"y"})
+
+m= Prophet()
+m.fit(df_train)
+future = m.make_future_dataframe(periods=period)
+forecast = m.predict(future)
+
+st.subheader("FORECAST DATA")
+if data is None:
+    st.info("No data to display for the selected ticker.")
+else:
+    st.write(forecast.tail())
+
+st.write('FORECAST DATA')
+fig1 = plot_plotly(m,forecast)
+st.plotly_chart(fig1)
+
+st.write('FORECAST COMPONENTS')
+fig2 = m.plot_components(forecast)
+st.write(fig2)
