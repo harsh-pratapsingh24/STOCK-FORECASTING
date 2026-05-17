@@ -1,4 +1,5 @@
-streamlit
-yfinance
-prophet
 plotly
+prophet
+streamlit
+vaderSentiment
+yfinance
