@@ -68,7 +68,7 @@ sentiment_df = fetch_news_sentiment(selected_stocks)
 
 def plot_raw_data(data, sentiment_df):
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=data['Date'], y =data['Open'], name='stock_open', line=dict(color='deepskyblue', opacity=0.5)))
+    fig.add_trace(go.Scatter(x=data['Date'], y =data['Open'], name='stock_open', line=dict(color='deepskyblue'), opacity=0.5))
     fig.add_trace(go.Scatter(x=data['Date'], y =data['Close'], name='stock_close', line=dict(color='orange')))
     
     if not sentiment_df.empty:
