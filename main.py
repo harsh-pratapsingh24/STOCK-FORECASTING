@@ -14,6 +14,44 @@ st.set_page_config(
     page_title="Stock Forecasting",
     layout="wide"
 )
+st.markdown("""
+<style>
+
+/* Reduce top padding */
+.block-container {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    max-width: 95%;
+}
+
+/* Rounded metric cards */
+div[data-testid="stMetric"]{
+    background-color:#1f2937;
+    border-radius:15px;
+    padding:18px;
+    border:1px solid #374151;
+}
+
+/* Section headings */
+.section-header{
+    font-size:28px;
+    font-weight:700;
+    margin-top:30px;
+    margin-bottom:15px;
+}
+
+/* Buttons */
+.stButton>button{
+    border-radius:10px;
+}
+
+/* Dataframes */
+[data-testid="stDataFrame"]{
+    border-radius:15px;
+}
+
+</style>
+""", unsafe_allow_html=True)
 
 # Stock name mapping for better user experience
 STOCK_NAMES = {
@@ -57,14 +95,37 @@ st.title(" Stock Forecasting App")
 st.markdown("---")
 
 # Create display names for dropdown
-stock_options = [f"{STOCK_NAMES.get(ticker, ticker)} ({ticker})" for ticker in STOCK_NAMES.keys()]
-selected_stock_display = st.selectbox("Select dataset for prediction", stock_options)
+stock_options = [
+    f"{STOCK_NAMES.get(ticker, ticker)} ({ticker})"
+    for ticker in STOCK_NAMES.keys()
+]
 
-# Extract the actual ticker from the selection (format: "Company Name (TICKER)")
+with st.sidebar:
+    st.header("Configuration")
+
+    selected_stock_display = st.selectbox(
+        "Choose Stock",
+        stock_options
+    )
+
+    n_years = st.slider(
+        "Prediction Years",
+        1,
+        4,
+        1 # default value
+    )
+    chart_type = st.radio(
+    "Chart Type",
+    ["Line", "Candlestick"],
+    horizontal=True
+)
+
+    st.caption("Created by Harsh Pratap Singh")
+
+# Extract the actual ticker
 selected_stocks = selected_stock_display.split("(")[-1].rstrip(")")
 selected_name = selected_stock_display.split(" (")[0]
 
-n_years = st.slider("Years of prediction:",1 , 4)
 period = n_years * 365
 
 @st.cache_data
@@ -126,42 +187,84 @@ else:
                 st.metric("Lower Bound", f"₹{yf_row['yhat_lower']:.2f}")
 
 sentiment_df = fetch_news_sentiment(selected_stocks)
-
+data["MA20"] = data["Close"].rolling(20).mean()
+data["MA50"] = data["Close"].rolling(50).mean()
 def plot_raw_data(data, sentiment_df):
     fig = go.Figure()
 
-    fig.add_trace(go.Scatter(x=data['Date'], y =data['Open'], name='stock_open', line=dict(color='deepskyblue'), opacity=0.5))
-    fig.add_trace(go.Scatter(x=data['Date'], y =data['Close'], name='stock_close', line=dict(color='orange')))
-    
+    if chart_type == "Line":
+        fig.add_trace(
+            go.Scatter(
+                x=data["Date"],
+                y=data["Open"],
+                name="Open",
+                line=dict(color="#60a5fa"),
+                opacity=0.6
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=data["Date"],
+                y=data["Close"],
+                name="Close",
+                line=dict(color="#f59e0b", width=2)
+            )
+        )
+
+    else:
+        fig.add_trace(
+            go.Candlestick(
+                x=data["Date"],
+                open=data["Open"],
+                high=data["High"],
+                low=data["Low"],
+                close=data["Close"],
+                name="Price"
+            )
+        )
+
+    # News markers
     if not sentiment_df.empty:
-        # Align sentiment dates with stock price dates for overlaying
-        # We use the Close price on the day of the news
+
         prices_at_news = []
-        for d in sentiment_df['Date']:
-            past_prices = data[data['Date'] <= d]
-            if not past_prices.empty:
-                prices_at_news.append(past_prices['Close'].iloc[-1])
+
+        for d in sentiment_df["Date"]:
+            past = data[data["Date"] <= d]
+
+            if not past.empty:
+                prices_at_news.append(past["Close"].iloc[-1])
             else:
-                prices_at_news.append(data['Close'].iloc[0])
+                prices_at_news.append(data["Close"].iloc[0])
 
-        fig.add_trace(go.Scatter(
-            x=sentiment_df['Date'],
-            y=prices_at_news,
-            mode='markers',
-            name='News Sentiment',
-            marker=dict(
-                size=12,
-                color=sentiment_df['Score'],
-                colorscale='RdYlGn',
-                showscale=True,
-                reversescale=False,
-                colorbar=dict(title="Sentiment", x=1.1)
-            ),
-            text=sentiment_df['Title'],
-            hovertemplate="<b>%{text}</b><br>Date: %{x}<br>Score: %{marker.color:.2f}<extra></extra>"
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=sentiment_df["Date"],
+                y=prices_at_news,
+                mode="markers",
+                name="News",
+                marker=dict(
+                    size=10,
+                    color=sentiment_df["Score"],
+                    colorscale="RdYlGn",
+                    showscale=True,
+                    colorbar=dict(title="Sentiment")
+                ),
+                text=sentiment_df["Title"],
+                hovertemplate="<b>%{text}</b><br>Sentiment: %{marker.color:.2f}<extra></extra>"
+            )
+        )
 
-    fig.layout.update(title_text=f"{STOCK_NAMES.get(selected_stocks, selected_stocks)} Stock Price with Sentiment Analysis", xaxis_rangeslider_visible=True)
+    fig.update_layout(
+        title=f"{selected_name} Stock Price",
+        xaxis_title="Date",
+        yaxis_title="Price",
+        template="plotly_dark",
+        height=650,
+        hovermode="x unified",
+        xaxis_rangeslider_visible=False
+    )
+
     st.plotly_chart(fig, use_container_width=True)
 
 plot_raw_data(data, sentiment_df)
