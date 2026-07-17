@@ -112,15 +112,41 @@ with st.sidebar:
         "Prediction Years",
         1,
         4,
-        1 # default value
+        1
     )
-    chart_type = st.radio(
-    "Chart Type",
-    ["Line", "Candlestick"],
-    horizontal=True
-)
 
-    st.caption("Created by Harsh Pratap Singh")
+    chart_type = st.radio(
+        "Chart Type",
+        ["Line", "Candlestick"]
+    )
+
+    st.markdown("---")
+
+    st.markdown("""
+    <div style="text-align:center;">
+
+    <h3>My Socials</h3>
+
+    <div style="display:flex; justify-content:center; gap:25px;">
+
+    <a href="https://www.linkedin.com/in/harshpratapsingh333/" target="_blank">
+        <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linkedin/linkedin-original.svg"
+             width="42">
+    </a>
+
+    <a href="https://leetcode.com/u/harshps/" target="_blank">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/1/19/LeetCode_logo_black.png"
+             width="42">
+    </a>
+
+    </div>
+
+    <br>
+
+    <small>Created by Harsh Pratap Singh</small>
+
+    </div>
+    """, unsafe_allow_html=True)
 
 # Extract the actual ticker
 selected_stocks = selected_stock_display.split("(")[-1].rstrip(")")
