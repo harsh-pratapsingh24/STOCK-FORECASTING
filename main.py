@@ -10,6 +10,17 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 analyzer = SentimentIntensityAnalyzer()
 
+# Stock name mapping for better user experience
+STOCK_NAMES = {
+    "ABCAPITAL.NS": "AB Capital",
+    "TATSILV.NS": "Tata Silver ETF",
+    "NFLX": "Netflix",
+    "GOLDBEES.BO": "Gold ETF",
+    "RESPONIND.NS": "Responsive Industries",
+    "GOOG": "Alphabet (Google)",
+    "RPOWER.NS": "Reliance Power"
+}
+
 def get_sentiment_score(text):
     if not text:
         return 0
@@ -37,10 +48,16 @@ def fetch_news_sentiment(ticker):
 START = "2020-01-01"
 TODAY = date.today().strftime("%Y-%m-%d")
 
-st.title("Stock Forecasting App")
+st.title(" Stock Forecasting App")
+st.markdown("---")
 
-stocks = ("ABCAPITAL.NS","TATSILV.NS","NFLX","GOLDBEES.BO","RESPONIND.NS","GOOG","RPOWER.NS")
-selected_stocks = st.selectbox("Select dataset for prediction",stocks)
+# Create display names for dropdown
+stock_options = [f"{STOCK_NAMES.get(ticker, ticker)} ({ticker})" for ticker in STOCK_NAMES.keys()]
+selected_stock_display = st.selectbox("Select dataset for prediction", stock_options)
+
+# Extract the actual ticker from the selection (format: "Company Name (TICKER)")
+selected_stocks = selected_stock_display.split("(")[-1].rstrip(")")
+selected_name = selected_stock_display.split(" (")[0]
 
 n_years = st.slider("Years of prediction:",1 , 4)
 period = n_years * 365
@@ -54,20 +71,57 @@ def load_data(ticker):
     data.reset_index(inplace=True)
     return data
 
-data_load_state = st.text("LOAD DATA...")
 data = load_data(selected_stocks)
-data_load_state.text("LOADING DATA...DONE")
+
+# FORECASTING (needed early for raw data bounds)
+df_train = data[['Date','Close']]
+df_train = df_train.rename(columns={"Date":"ds","Close":"y"})
+
+m = Prophet()
+m.fit(df_train)
+future = m.make_future_dataframe(periods=period)
+forecast = m.predict(future)
 
 st.subheader("RAW DATA")
 if data is None:
     st.info("No data to display for the selected ticker.")
 else:
-    st.write(data.tail())
+    yesterday_row = data.iloc[-2]
+    yesterday_row = data.iloc[-2] if len(data) > 1 else None
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Yesterday's Close", f"₹{yesterday_row['Close']:.2f}")
+    with col2:
+        st.metric("Yesterday's Open", f"₹{yesterday_row['Open']:.2f}")
+    with col3:
+        st.metric("Yesterday's High", f"₹{yesterday_row['High']:.2f}")
+    with col4:
+        st.metric("Yesterday's Low", f"₹{yesterday_row['Low']:.2f}")
+
+
+
+    st.dataframe(data.tail(10), use_container_width=True)
+
+    # Forecast bounds for yesterday
+    if yesterday_row is not None:
+        yesterday_forecast = forecast[forecast['ds'].dt.date == yesterday_row['Date'].date()]
+        if not yesterday_forecast.empty:
+            yf_row = yesterday_forecast.iloc[0]
+            st.markdown("**Yesterday's Forecast Bounds (95% CI)**")
+            bc1, bc2, bc3 = st.columns(3)
+            with bc1:
+                st.metric("Predicted", f"₹{yf_row['yhat']:.2f}")
+            with bc2:
+                st.metric("Upper Bound", f"₹{yf_row['yhat_upper']:.2f}")
+            with bc3:
+                st.metric("Lower Bound", f"₹{yf_row['yhat_lower']:.2f}")
 
 sentiment_df = fetch_news_sentiment(selected_stocks)
 
 def plot_raw_data(data, sentiment_df):
     fig = go.Figure()
+
     fig.add_trace(go.Scatter(x=data['Date'], y =data['Open'], name='stock_open', line=dict(color='deepskyblue'), opacity=0.5))
     fig.add_trace(go.Scatter(x=data['Date'], y =data['Close'], name='stock_close', line=dict(color='orange')))
     
@@ -99,34 +153,110 @@ def plot_raw_data(data, sentiment_df):
             hovertemplate="<b>%{text}</b><br>Date: %{x}<br>Score: %{marker.color:.2f}<extra></extra>"
         ))
 
-    fig.layout.update(title_text="Time Series Data with Sentiment Overlay", xaxis_rangeslider_visible=True)
-    st.plotly_chart(fig)
+    fig.layout.update(title_text=f"{STOCK_NAMES.get(selected_stocks, selected_stocks)} Stock Price with Sentiment Analysis", xaxis_rangeslider_visible=True)
+    st.plotly_chart(fig, use_container_width=True)
 
 plot_raw_data(data, sentiment_df)
 
+# News sentiment section with better organization
 if not sentiment_df.empty:
-    st.subheader("RECENT NEWS SENTIMENT")
-    st.write(sentiment_df[['Date', 'Title', 'Score']].sort_values('Date', ascending=False).head(10))
-
-# FORECASTING 
-df_train = data[['Date','Close']]
-df_train = df_train.rename(columns={"Date":"ds","Close":"y"})
-
-m= Prophet()
-m.fit(df_train)
-future = m.make_future_dataframe(periods=period)
-forecast = m.predict(future)
-
-st.subheader("FORECAST DATA")
-if data is None:
-    st.info("No data to display for the selected ticker.")
+    st.markdown('<div class="section-header"><h2>📰 Market News & Sentiment</h2></div>', unsafe_allow_html=True)
+    
+    # Sentiment summary metrics
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        avg_sentiment = sentiment_df['Score'].mean()
+        sentiment_label = "Positive" if avg_sentiment > 0.1 else "Negative" if avg_sentiment < -0.1 else "Neutral"
+        st.metric("Average Sentiment", f"{avg_sentiment:.3f}", delta=sentiment_label)
+    with col2:
+        positive_count = len(sentiment_df[sentiment_df['Score'] > 0.1])
+        st.metric("Positive News", f"{positive_count}/{len(sentiment_df)}")
+    with col3:
+        negative_count = len(sentiment_df[sentiment_df['Score'] < -0.1])
+        st.metric("Negative News", f"{negative_count}/{len(sentiment_df)}")
+    
+    # Recent news in expandable section
+    with st.expander("📰 View Latest News Sentiment", expanded=False):
+        sentiment_display = sentiment_df[['Date', 'Title', 'Score']].sort_values('Date', ascending=False).head(10)
+        
+        # Color code sentiment
+        def color_sentiment(val):
+            color = '#d4edda' if val > 0.1 else '#f8d7da' if val < -0.1 else '#fff3cd'
+            return f'background-color: {color}'
+        
+        styled_df = sentiment_display.style.applymap(color_sentiment, subset=['Score'])
+        st.dataframe(styled_df, use_container_width=True)
 else:
-    st.write(forecast.tail())
+    st.info("📰 No recent news sentiment data available for this stock")
 
-st.write('FORECAST DATA')
-fig1 = plot_plotly(m,forecast)
-st.plotly_chart(fig1)
+# Forecast results in organized sections
+st.markdown('<div class="section-header"><h2>🔮 Forecast Results</h2></div>', unsafe_allow_html=True)
 
-st.write('FORECAST COMPONENTS')
-fig2 = m.plot_components(forecast)
-st.write(fig2)
+# Forecast metrics in cards
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric(
+        label=f"Forecast ({n_years} Year)", 
+        value=f"₹{forecast['yhat'].iloc[-1]:.2f}",
+        delta=f"{((forecast['yhat'].iloc[-1] / data['Close'].iloc[-1]) - 1) * 100:+.2f}%"
+    )
+with col2:
+    st.metric(
+        label="Upper Bound (95%)", 
+        value=f"₹{forecast['yhat_upper'].iloc[-1]:.2f}"
+    )
+with col3:
+    st.metric(
+        label="Lower Bound (95%)", 
+        value=f"₹{forecast['yhat_lower'].iloc[-1]:.2f}"
+    )
+
+# Forecast visualization
+st.subheader("📈 Price Forecast Chart")
+fig1 = plot_plotly(m, forecast)
+fig1.update_layout(
+    title={
+        'text': f"{selected_name} Stock Price Forecast ({n_years} Year Projection)",
+        'x': 0.5,
+        'xanchor': 'center'
+    },
+    xaxis_title="Date",
+    yaxis_title="Price (USD)",
+    hovermode='x unified'
+)
+st.plotly_chart(fig1, use_container_width=True)
+
+# Forecast components and data in expandable sections
+col1, col2 = st.columns(2)
+
+with col1:
+    with st.expander("📊 View Forecast Data", expanded=False):
+        forecast_display = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail(10)
+        forecast_display.columns = ['Date', 'Predicted Price', 'Lower Bound', 'Upper Bound']
+        st.dataframe(forecast_display, use_container_width=True)
+
+with col2:
+    with st.expander("🔍 View Trend Components", expanded=True):
+        fig2 = m.plot_components(forecast)
+        fig2.set_size_inches(12, 8)
+        st.pyplot(fig2)
+
+# Model information
+with st.expander("ℹ️ About the Forecasting Model", expanded=False):
+    st.info("""
+    **Prophet Model Details:**
+    - Developed by Facebook for time series forecasting
+    - Automatically detects trends, seasonality, and holiday effects
+    - Robust to missing data and outliers
+    - Particularly effective with daily data showing multiple seasonal patterns
+    - Confidence intervals widen further into the future as uncertainty increases
+    
+    **Model Parameters:**
+    - Training period: {} to {}
+    - Forecast horizon: {} days ({} years)
+    - Data points used: {}
+    """.format(
+        df_train['ds'].min().strftime('%Y-%m-%d'),
+        df_train['ds'].max().strftime('%Y-%m-%d'),
+        period, n_years, len(df_train)
+    ))
