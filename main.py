@@ -181,10 +181,10 @@ if not sentiment_df.empty:
         
         # Color code sentiment
         def color_sentiment(val):
-            color = '#d4edda' if val > 0.1 else '#f8d7da' if val < -0.1 else '#fff3cd'
+            color = "#00d833" if val > 0.1 else "#fd1024" if val < -0.1 else "#0c00ec"
             return f'background-color: {color}'
         
-        styled_df = sentiment_display.style.applymap(color_sentiment, subset=['Score'])
+        styled_df = sentiment_display.style.map(color_sentiment, subset=['Score'])
         st.dataframe(styled_df, use_container_width=True)
 else:
     st.info("📰 No recent news sentiment data available for this stock")
