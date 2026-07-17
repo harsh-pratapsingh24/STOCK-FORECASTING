@@ -10,6 +10,11 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 analyzer = SentimentIntensityAnalyzer()
 
+st.set_page_config(
+    page_title="Stock Forecasting",
+    layout="wide"
+)
+
 # Stock name mapping for better user experience
 STOCK_NAMES = {
     "ABCAPITAL.NS": "AB Capital",
@@ -72,6 +77,9 @@ def load_data(ticker):
     return data
 
 data = load_data(selected_stocks)
+
+if data is None:
+    st.stop()
 
 # FORECASTING (needed early for raw data bounds)
 df_train = data[['Date','Close']]
@@ -181,7 +189,7 @@ if not sentiment_df.empty:
         
         # Color code sentiment
         def color_sentiment(val):
-            color = "#00d833" if val > 0.1 else "#fd1024" if val < -0.1 else "#0c00ec"
+            color = "#4af973" if val > 0.1 else "#fd1024" if val < -0.1 else "#0c00ec"
             return f'background-color: {color}'
         
         styled_df = sentiment_display.style.map(color_sentiment, subset=['Score'])
