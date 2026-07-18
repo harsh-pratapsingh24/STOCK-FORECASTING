@@ -57,8 +57,9 @@ div[data-testid="stMetric"]{
 STOCK_NAMES = {
     "ABCAPITAL.NS": "AB Capital",
     "TATSILV.NS": "Tata Silver ETF",
+    "WELSPUNLIV.NS": "Welspun Living Limited",
+    "CUPID.NS": "CUPID",
     "NFLX": "Netflix",
-    "GOLDBEES.BO": "Gold ETF",
     "RESPONIND.NS": "Responsive Industries",
     "GOOG": "Alphabet (Google)",
     "RPOWER.NS": "Reliance Power"
