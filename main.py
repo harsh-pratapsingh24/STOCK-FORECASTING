@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import date
 import pandas as pd
-
+import requests
 import yfinance as yf
 from prophet import Prophet
 from prophet.plot import plot_plotly
@@ -144,10 +144,71 @@ with st.sidebar:
 
     <br>
 
-    <small>Created by Harsh Pratap Singh</small>
-
     </div>
     """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # -------------------------
+    # Contact / Feedback Form
+    # -------------------------
+    st.subheader("📬 Feedback & Stock Request")
+
+    st.caption("Suggest a stock, report a bug, or share feedback.")
+
+    with st.form("feedback_form", clear_on_submit=True):
+
+        name = st.text_input("Name")
+
+        email = st.text_input("Email (Optional)")
+
+        stock = st.text_input(
+            "Stock you'd like added",
+            placeholder="Example: TCS.NS"
+        )
+
+        feedback = st.text_area(
+            "Comments / Suggestions",
+            placeholder="Tell me what you'd like to see..."
+        )
+
+        submitted = st.form_submit_button("Submit")
+        
+
+    if submitted:
+
+        if stock == "" and feedback == "":
+            st.warning("Please enter a stock request or some feedback.")
+
+        else:
+
+            payload = {
+                "name": name,
+                "email": email,
+                "stock": stock,
+                "feedback": feedback
+            }
+
+            APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyAnsT3YJftUoBcVt8ymI2o1LRDpInlS25FuXXLtPJNjlf5ntCBnoMAsbquNW2llmAs/exec"
+
+            try:
+                response = requests.post(
+                    APPS_SCRIPT_URL,
+                    json=payload,
+                    timeout=40
+                )
+
+                if response.status_code == 200:
+                    st.success("Thank you! Your feedback has been submitted.")
+
+                else:
+                    st.error("Submission failed. Please try again.")
+
+            except Exception as e:
+                st.error(f"⚠️Error: {e}")
+
+        st.markdown("---")
+    st.caption("Created by Harsh Pratap Singh")
 
 # Extract the actual ticker
 selected_stocks = selected_stock_display.split("(")[-1].rstrip(")")
