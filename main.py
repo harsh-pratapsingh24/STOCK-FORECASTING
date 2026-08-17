@@ -412,7 +412,40 @@ with col3:
 
 # Forecast visualization
 st.subheader("📈 Price Forecast Chart")
-fig1 = plot_plotly(m, forecast)
+
+fig1 = go.Figure()
+
+fig1.add_trace(go.Scatter(
+    x=m.history["ds"],
+    y=m.history["y"],
+    mode="lines",
+    name="Actual"
+))
+
+fig1.add_trace(go.Scatter(
+    x=forecast["ds"],
+    y=forecast["yhat"],
+    mode="lines",
+    name="Forecast"
+))
+
+fig1.add_trace(go.Scatter(
+    x=forecast["ds"],
+    y=forecast["yhat_upper"],
+    mode="lines",
+    line=dict(width=0),
+    showlegend=False
+))
+
+fig1.add_trace(go.Scatter(
+    x=forecast["ds"],
+    y=forecast["yhat_lower"],
+    mode="lines",
+    fill="tonexty",
+    line=dict(width=0),
+    name="Confidence Interval"
+))
+
 fig1.update_layout(
     title={
         'text': f"{selected_name} Stock Price Forecast ({n_years} Year Projection)",
