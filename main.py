@@ -55,7 +55,7 @@ div[data-testid="stMetric"]{
 
 # Stock name mapping for better user experience
 STOCK_NAMES = {
-    "ABCAPITAL.NS": "AB Capital",
+    "ABCAPITAL.BO": "AB Capital",
     "TATSILV.NS": "Tata Silver ETF",
     "WELSPUNLIV.NS": "Welspun Living Limited",
     "CUPID.NS": "CUPID",
